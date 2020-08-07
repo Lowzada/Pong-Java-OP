@@ -7,7 +7,7 @@
  import java.awt.event.ActionListener;
  import java.awt.event.KeyEvent;
  import java.awt.event.KeyListener;
-  
+ import java.awt.Font; 
  import javax.swing.JPanel;
  import javax.swing.Timer;
   
@@ -15,6 +15,10 @@
       
 	  private final static Color BACKGROUND_COLOUR = Color.BLACK;
       private final static int TIMER_DELAY = 5;
+      private final static int POINTS_TO_WIN = 3;
+      int player1Score = 0, player2Score = 0;
+      Player gameWinner;
+      
       
       GameState gameState = GameState.Initialising;
       
@@ -85,18 +89,7 @@
           repaint();
       }
       
-      @Override
-      public void paintComponent(Graphics g) {
-          super.paintComponent(g);
-          paintDottedLine(g);
-          if(gameState != GameState.Initialising) {
-              paintSprite(g, ball);
-              paintSprite(g, paddle1);
-              paintSprite(g, paddle2);
-  
-          }
-      }
-      
+         
       private void moveObject(Sprite object) {
           object.setXPosition(object.getXPosition() + object.getXVelocity(),getWidth());
           object.setYPosition(object.getYPosition() + object.getYVelocity(),getHeight());
@@ -108,22 +101,6 @@
      }
 
  
-     private void checkWallBounce() {
-         if(ball.getXPosition() <= 0) {
-             // Hit left side of screen
-             ball.setXVelocity(-ball.getXVelocity());
-            resetBall();
-        } else if(ball.getXPosition() >= getWidth() - ball.getWidth()) {
-            // Hit right side of screen
-            ball.setXVelocity(-ball.getXVelocity());
-            resetBall();
-        }
-        if(ball.getYPosition() <= 0 || ball.getYPosition() >= getHeight() - ball.getHeight()) {
-            // Hit top or bottom of screen
-            ball.setYVelocity(-ball.getYVelocity());
-        }
-    }
-      
      private void checkPaddleBounce() {
          if(ball.getXVelocity() < 0 && ball.getRectangle().intersects(paddle1.getRectangle())) {
              ball.setXVelocity(BALL_MOVEMENT_SPEED);
@@ -135,27 +112,107 @@
       private final static int BALL_MOVEMENT_SPEED = 2;
       
       private void update() {
-            switch(gameState) {
-                case Initialising: {
-                    createObjects();
-                    gameState = GameState.Playing;
-                    ball.setXVelocity(BALL_MOVEMENT_SPEED);
-                    ball.setYVelocity(BALL_MOVEMENT_SPEED);
-                    break;
-               }
-               case Playing: {
-            	   moveObject(paddle1);
-                   moveObject(paddle2);
-            	   moveObject(ball);            // Move ball
-                   checkWallBounce();            // Check for wall bounce
-                   checkPaddleBounce();
-                   break;
-               }
-               case GameOver: {
-                   break;
-               }
-           }
+          switch(gameState) {
+              case Initialising: {
+                  createObjects();
+                  gameState = GameState.Playing;
+                  ball.setXVelocity(BALL_MOVEMENT_SPEED);
+                  ball.setYVelocity(BALL_MOVEMENT_SPEED);
+                  break;
+              }
+             case Playing: {
+                 moveObject(paddle1);
+                 moveObject(paddle2);
+                 moveObject(ball);    // Move ball
+                 checkWallBounce();    // Check for wall bounce
+                 checkPaddleBounce();// Check for paddle bounce
+                 checkWin();        // Check if the game has been won
+                 break;
+             }
+             case GameOver: {
+            	 break;
+             }
+         }
+}
+ 
+      private void checkWin() {
+         if(player1Score >= POINTS_TO_WIN) {
+             gameWinner = Player.One;
+             gameState = GameState.GameOver;
+         } else if(player2Score >= POINTS_TO_WIN) {
+             gameWinner = Player.Two;
+             gameState = GameState.GameOver;
+         }
+     }
+     
+     private void addScore(Player player) {
+         if(player == Player.One) {
+             player1Score++;
+         } else if(player == Player.Two) {
+             player2Score++;
+         }
+     }
+     private void checkWallBounce() {
+         if(ball.getXPosition() <= 0) {
+             // Hit left side of screen
+             ball.setXVelocity(-ball.getXVelocity());
+             addScore(Player.Two);
+             resetBall();
+         } else if(ball.getXPosition() >= getWidth() - ball.getWidth()) {
+             // Hit right side of screen
+             ball.setXVelocity(-ball.getXVelocity());
+             addScore(Player.One);
+             resetBall();
+         }
+         if(ball.getYPosition() <= 0 || ball.getYPosition() >= getHeight() - ball.getHeight()) {
+             // Hit top or bottom of screen
+             ball.setYVelocity(-ball.getYVelocity());
+         }
+     }
+   
+   @Override
+    public void paintComponent(Graphics g) {
+        super.paintComponent(g);
+        paintDottedLine(g);
+        if(gameState != GameState.Initialising) {
+            paintSprite(g, ball);
+            paintSprite(g, paddle1);
+            paintSprite(g, paddle2);
+            paintScores(g);
+            paintWinner (g);
+        }
+    }
+   
+   private final static int SCORE_TEXT_X = 100;
+   private final static int SCORE_TEXT_Y = 100;
+   private final static int SCORE_FONT_SIZE = 50;
+   private final static String SCORE_FONT_FAMILY = "Serif";
+
+   private void paintScores(Graphics g) {
+       Font scoreFont = new Font(SCORE_FONT_FAMILY, Font.BOLD, SCORE_FONT_SIZE);
+      String leftScore = Integer.toString(player1Score);
+      String rightScore = Integer.toString(player2Score);
+      g.setFont(scoreFont);
+      g.drawString(leftScore, SCORE_TEXT_X, SCORE_TEXT_Y);
+      g.drawString(rightScore, getWidth()-SCORE_TEXT_X, SCORE_TEXT_Y);
+  }
+   private final static int WINNER_TEXT_X = 200;
+   private final static int WINNER_TEXT_Y = 200;
+   private final static int WINNER_FONT_SIZE = 40;
+   private final static String WINNER_FONT_FAMILY = "Serif";
+   private final static String WINNER_TEXT = "WIN!";
+
+	private void paintWinner(Graphics g) {
+       if(gameWinner != null) {
+           Font winnerFont = new Font(WINNER_FONT_FAMILY, Font.BOLD, WINNER_FONT_SIZE);
+          g.setFont(winnerFont);
+          int xPosition = getWidth() / 2;
+          if(gameWinner == Player.One) {
+              xPosition -= WINNER_TEXT_X;
+          } else if(gameWinner == Player.Two) {
+              xPosition += WINNER_TEXT_X;
+          }
+          g.drawString(WINNER_TEXT, xPosition, WINNER_TEXT_Y);
       }
-       
-      
+  }
 }
